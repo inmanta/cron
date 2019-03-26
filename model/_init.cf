@@ -1,0 +1,51 @@
+"""
+    Copyright 2017 Inmanta
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+    Contact: code@inmanta.com
+"""
+import std
+
+typedef cronjob_name as string matching /^[a-zA-Z0-9]+$/
+
+entity Cronjob extends std::PurgeableResource:
+   """
+      :param name: The name of the cronjob.
+      :param user: Command will be executed with this user.
+      :param schedule: A cron expression indicating when the command 
+                       should be executed.
+      :param command: The command executed when the cronjob fires.
+      :param env_vars: The environment variables that should be available
+                       to the command being executed.
+   """
+   cronjob_name name
+   string user
+   string schedule
+   string command
+   dict env_vars={}
+end
+
+index Cronjob(host, name)
+
+Cronjob.host [1] -- std::Host.cronjobs [0:]
+
+implementation cronjob for Cronjob:
+   path="/etc/cron.d/{{ self.name }}"
+   std::ConfigFile(host=self.host,    
+                   path=path,
+                   content=std::template("cron/cronjob.j2"),
+                   purge_on_delete=true)
+end
+
+implement Cronjob using cronjob
